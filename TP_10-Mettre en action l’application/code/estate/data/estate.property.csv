@@ -1,0 +1,11 @@
+id,name,description,postcode,active,date_availability,expected_price,selling_price,bedrooms,living_area,facades,garage,garden,garden_area,garden_orientation
+estate_property_1,"Villa Moderne Uccle","Magnifique villa contemporaine avec piscine et jardin paysager. Cuisine équipée, 4 chambres, 2 SDB.",1180,True,2024-06-15,650000.0,,4,180,3,True,True,350,south
+estate_property_2,"Appartement Centre Bruxelles","Superbe appartement rénové en plein centre-ville. Proche de tous commerces et transports.",1000,True,2024-04-01,320000.0,,2,85,1,False,False,,
+estate_property_3,"Maison Familiale Woluwe","Charmante maison 3façades avec jardin. Quartier calme et familial. Écoles à proximité.",1200,True,2024-05-20,425000.0,,3,120,3,True,True,150,west
+estate_property_4,"Loft Industriel Anderlecht","Loft atypique dans ancienne usine. Hauteur sous plafond 4m, poutres apparentes.",1070,True,2024-03-10,380000.0,,1,95,2,True,False,,
+estate_property_5,"Penthouse Ixelles","Penthouse exceptionnel avec terrasse panoramique. Finitions luxueuses et vue imprenable.",1050,True,2024-07-01,850000.0,,3,140,2,True,True,80,east
+estate_property_6,"Maison Bourgeoise Uccle","Belle maison bourgeoise rénovée. Cachet ancien préservé avec confort moderne.",1180,True,2024-08-15,580000.0,575000.0,4,160,2,True,True,200,south
+estate_property_7,"Studio Étudiant","Studio meublé idéal étudiant. Proche universités et transports en commun.",1050,True,2024-09-01,180000.0,,1,35,1,False,False,,
+estate_property_8,"Villa Architecte","Villa d'architecte unique avec design contemporain. Matériaux nobles et domotique.",1640,True,2024-10-01,950000.0,,5,250,4,True,True,500,south
+estate_property_9,"Duplex Schaerbeek","Duplex lumineux avec mezzanine. Rénové avec goût, quartier en devenir.",1030,True,2024-04-15,295000.0,,2,90,2,False,True,25,north
+estate_property_10,"Château Waterloo","Propriété d'exception du 18ème siècle. Parc arboré, dépendances, écuries.",1410,True,2024-12-01,1200000.0,,8,400,4,True,True,2000,east
