@@ -1,7 +1,7 @@
 https://www.odoo.com/documentation/19.0/fr/developer/tutorials/setup_guide.html
 
 
-# ✅ Checklists – Setup du tutoriel Odoo
+# ✅ Checklists – Lancer le tutoriel
 
 ### 🔹 Étape 1 : Fork du dépôt tutoriel
 

@@ -1,5 +1,5 @@
 id,name,description,postcode,active,date_availability,expected_price,selling_price,bedrooms,living_area,facades,garage,garden,garden_area,garden_orientation
-estate_property_1,"Villa Moderne Uccle","Magnifique villa contemporaine avec piscine et jardin paysager. Cuisine équipée, 4 chambres, 2 SDB.",1180,True,2024-06-15,650000.0,,4,180,3,True,True,350,south
+estate_property_1,"Villa Moderne Uccle","Magnifique villa contemporaine avec piscine et jardin paysager. Cuisine équipée - 4 chambres et 2 SDB.",1180,True,2024-06-15,650000.0,,4,180,3,True,True,350,south
 estate_property_2,"Appartement Centre Bruxelles","Superbe appartement rénové en plein centre-ville. Proche de tous commerces et transports.",1000,True,2024-04-01,320000.0,,2,85,1,False,False,,
 estate_property_3,"Maison Familiale Woluwe","Charmante maison 3façades avec jardin. Quartier calme et familial. Écoles à proximité.",1200,True,2024-05-20,425000.0,,3,120,3,True,True,150,west
 estate_property_4,"Loft Industriel Anderlecht","Loft atypique dans ancienne usine. Hauteur sous plafond 4m, poutres apparentes.",1070,True,2024-03-10,380000.0,,1,95,2,True,False,,

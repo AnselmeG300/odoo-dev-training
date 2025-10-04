@@ -17,7 +17,7 @@ Je vais donc t’expliquer **pas à pas** :
 
 ---
 
-# 📘 Chapitre 5 : Interface utilisateur avec XML
+# ✅ Checklists – Construire une première interface
 
 ### 🎯 Objectif général
 

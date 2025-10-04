@@ -4,7 +4,7 @@ https://www.odoo.com/documentation/19.0/fr/developer/tutorials/server_framework_
 
 ---
 
-# 📘 Chapitre 6 : Les Vues de Base
+# ✅ Checklists – Concevoir des vues simples
 
 ### 🎯 Objectif général
 

@@ -2,7 +2,7 @@
 
 ---
 
-# 📘 Chapitre 2 : Nouvelle Application (Real Estate Module)
+# ✅ Checklists – Créer un nouvelle application
 
 ### 🎯 Objectif général
 

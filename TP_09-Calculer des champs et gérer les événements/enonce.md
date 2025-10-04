@@ -2,7 +2,7 @@ https://www.odoo.com/documentation/19.0/fr/developer/tutorials/server_framework_
 
 ---
 
-# 📘 Chapitre 8 : Computed Fields et Onchanges
+# ✅ Checklists – Calculer des champs et gérer les événements
 
 ---
 
@@ -142,23 +142,30 @@ Dans `estate_property_offer.py` :
 ```python
 from datetime import timedelta
 
-validity = fields.Integer(default=7)
+validity = fields.Integer(
+    compute="_compute_validity",
+    inverse="_compute_date_deadline",
+    default=7, 
+    store=True
+)
 date_deadline = fields.Date(
     compute="_compute_date_deadline",
-    inverse="_inverse_date_deadline",
+    inverse="_compute_validity",
     store=True
 )
 
-@api.depends("validity", "create_date")
+
+@api.depends("validity")
 def _compute_date_deadline(self):
     for record in self:
-        create_date = record.create_date or fields.Date.today()
+        create_date = (record.create_date.date() if record.create_date else fields.Date.today())
         record.date_deadline = create_date + timedelta(days=record.validity)
 
-def _inverse_date_deadline(self):
+@api.depends("date_deadline")
+def _compute_validity(self):
     for record in self:
-        create_date = record.create_date or fields.Date.today()
-        record.validity = (record.date_deadline - create_date).days
+        create_date = (record.create_date.date() if record.create_date else fields.Date.today())
+            record.validity = (record.date_deadline - create_date).days
 ```
 
 👉 Ajouter `validity` et `date_deadline` dans la **vue formulaire et liste des offres**.

@@ -2,7 +2,7 @@ https://www.odoo.com/documentation/19.0/fr/developer/tutorials/server_framework_
 
 ---
 
-# 📘 Chapitre 4 : Sécurité – Introduction
+# ✅ Checklists – Sécuriser l’application
 
 ### 🎯 Objectif général
 

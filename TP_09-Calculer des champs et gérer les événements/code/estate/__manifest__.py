@@ -1,6 +1,7 @@
 {
     'name': 'estate',
     'depends': ['base'],
+    'category': 'Tutorials',
     'application': True,
     'data': [
         'security/ir.model.access.csv',

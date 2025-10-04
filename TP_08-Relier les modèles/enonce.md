@@ -4,7 +4,7 @@ Ici, on franchit un cap important : relier nos modèles entre eux pour refléter
 
 ---
 
-# 📘 Chapitre 7 : Relations entre modèles
+# ✅ Checklists – Relier les modèles
 
 ## 🎯 Objectif général
 

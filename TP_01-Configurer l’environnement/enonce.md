@@ -1,6 +1,6 @@
 https://www.odoo.com/documentation/19.0/fr/contributing/development.html#contributing-development-setup
 
-# ✅ Checklist complète – Setup Environnement Odoo Community
+# ✅ Checklist complète – Configurer l’environnement
 
 ### 🔹 Partie Git & Dépôts
 
@@ -19,6 +19,18 @@ https://www.odoo.com/documentation/19.0/fr/contributing/development.html#contrib
 
 ---
 
+### 🔹 Partie VS Code (IDE)
+
+* [ ] Installer **VS Code** si ce n’est pas déjà fait.
+* [ ] Ajouter les extensions :
+
+  * **Python** (Microsoft)
+  * **Python Environment**
+  * **Python Debugger**
+
+
+---
+
 ### 🔹 Partie Python & Environnement
 
 * [ ] Vérifier que **Python 3.10+** est installé :
@@ -26,7 +38,9 @@ https://www.odoo.com/documentation/19.0/fr/contributing/development.html#contrib
   ```bash
   python3 --version
   ```
-* [ ] Créer un **environnement virtuel** pour Odoo :
+* [ ] Créer un **environnement virtuel** et Installer les **dépendances Python** pour Odoo :
+
+Au lieu d'executer les commandes suivantes vous pouvez directement utiliser **Python Environment** comme dans la vidéo
 
   ```bash
   cd odoo
@@ -34,28 +48,21 @@ https://www.odoo.com/documentation/19.0/fr/contributing/development.html#contrib
   source venv/bin/activate   # (Linux/macOS)
   venv\Scripts\activate      # (Windows)
   ```
-* [ ] Installer les **dépendances Python** :
 
   ```bash
   pip install -r requirements.txt
   ```
+
 * [ ] Installer **PostgreSQL** (nécessaire pour la base de données Odoo).
 
 ---
 
-### 🔹 Partie VS Code (IDE)
+### 🔹 Configurer odoo.conf
 
-* [ ] Installer **VS Code** si ce n’est pas déjà fait.
-* [ ] Ajouter les extensions :
 
-  * **Python** (Microsoft)
-  * **Python Environment Manager**
-  * **Python Debugger**
-* [ ] Configurer VS Code pour utiliser ton environnement virtuel Python.
+### 🔹 Lancer Odoo 
 
----
-
-### 🔹 Lancer Odoo
+Au lieu d'executer les commandes suivantes vous pouvez directement utiliser **[Python Debugger](launch.json)** comme dans la vidéo
 
 * [ ] Se placer dans le répertoire `odoo` et lancer le serveur :
 
