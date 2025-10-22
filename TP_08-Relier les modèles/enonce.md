@@ -1,6 +1,4 @@
-https://www.odoo.com/documentation/19.0/fr/developer/tutorials/server_framework_101/07_relations.html
-
-Ici, on franchit un cap important : relier nos modèles entre eux pour refléter la réalité métier. C’est ce qui donne toute la puissance à Odoo.
+https://www.odoo.com/documentation/19.0/developer/reference/backend/orm.html#relational-fields
 
 ---
 

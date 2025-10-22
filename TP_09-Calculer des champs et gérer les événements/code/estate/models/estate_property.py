@@ -1,15 +1,13 @@
+from odoo import models, fields, api
 from dateutil.relativedelta import relativedelta
-from odoo import fields, models, api
-from datetime import timedelta
 
 class EstateProperty(models.Model):
-    _name = "estate.property"   
+    _name = "estate.property"  
     _description = "Real Estate Property"
 
     name = fields.Char(required=True)
     description = fields.Text()
     postcode = fields.Char()
-    active = fields.Boolean(default=True)
     date_availability = fields.Date(default=lambda self: fields.Date.today() + relativedelta(months=3), copy=False)
     expected_price = fields.Float(required=True)
     selling_price = fields.Float(readonly=True, copy=False)
@@ -29,10 +27,23 @@ class EstateProperty(models.Model):
         string="Garden Orientation"
     )
 
+    active = fields.Boolean(default=True)
+    state = fields.Selection(
+        [
+            ('new', 'New'),
+            ('offer_received', 'Offer received'),
+            ('offer_accepted', 'Offer accepted'),
+            ('sold', 'Sold'),
+            ('cancelled', 'Cancelled'),
+        ],
+        default = 'new'
+    )
+
     property_type_id = fields.Many2one("estate.property.type", string="Property Type")
     buyer_id = fields.Many2one("res.partner", string="Buyer", copy=False)
     salesman_id = fields.Many2one("res.users", string="Salesman",
                               default=lambda self: self.env.user)
+
     tag_ids = fields.Many2many("estate.property.tag", string="Tags")
     offer_ids = fields.One2many("estate.property.offer", "property_id", string="Offers")
 
@@ -40,18 +51,17 @@ class EstateProperty(models.Model):
         compute="_compute_total_area",
         string="Total Area (sqm)"
     )
+
     best_price = fields.Float(
         compute="_compute_best_price",
         string="Best Offer"
     )
-
 
     @api.depends("living_area", "garden_area")
     def _compute_total_area(self):
         for record in self:
             record.total_area = record.living_area + record.garden_area
 
-    
     @api.depends("offer_ids.price")
     def _compute_best_price(self):
         for record in self:
@@ -68,5 +78,3 @@ class EstateProperty(models.Model):
         else:
             self.garden_area = 0
             self.garden_orientation = False
-
-    

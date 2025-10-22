@@ -29,35 +29,43 @@
                         <group>
                             <field name="postcode"/>
                             <field name="date_availability"/>
+                            <field name="state"/>
+                            <field name="description"/>
                         </group>
                         <group>
                             <field name="expected_price"/>
                             <field name="selling_price" readonly="1"/>
-                            <field name="best_price" />
+                            <field name="best_price"/>
+                            <field name="property_type_id"/>
+                            <field name="tag_ids" widget="many2many_tags"/>
                         </group>
                     </group>
                     <notebook>
-                        <page string="Description">
+                        <page string="Details">
                             <group>
-                                <field name="description" string="Description"/>
-                                <field name="bedrooms" string="Bedrooms"/>
-                                <field name="living_area" string="Living Area"/>
-                                <field name="facades" string="Facades"/>
-                                <field name="garage" string="Garage"/>
-                                <field name="garden" string="Garden"/>
-                                <field name="garden_area" string="Garden Area"/>
-                                <field name="garden_orientation" string="Garden Orientation"/>
-                                <field name="total_area" string="Total Area"/>
+                                <group>
+                                    <field name="facades"/>
+                                    <field name="living_area"/>
+                                    <field name="garden_area"/>
+                                    <field name="total_area"/>
+                                </group>
+                                <group>
+                                    <field name="bedrooms"/>
+                                    <field name="garage"/>
+                                    <field name="garden"/>
+                                    <field name="garden_orientation"/>
+                                </group>
                             </group>
-                        </page>
-                        <page string="Offers">
-                            <field name="offer_ids"/>
+
                         </page>
                         <page string="Other Info">
                             <group>
                                 <field name="salesman_id"/>
                                 <field name="buyer_id"/>
                             </group>
+                        </page>
+                        <page string="Offers">
+                            <field name="offer_ids"/>
                         </page>
                     </notebook>
                 </sheet>
@@ -75,10 +83,11 @@
                 <field name="selling_price"/>
                 <field name="date_availability"/>
 
+                <!-- Filtre "Available" -->
+                <filter name="filter_available" string="Available" domain="[('state', 'in', ['new','offer_received'])]"/>
+
                 <!-- Group by postcode -->
-                <filter name="group_by_postcode"
-                        string="Group by Postcode"
-                        context="{'group_by': 'postcode'}"/>
+                <filter name="group_by_postcode" string="Group by Postcode" context="{'group_by': 'postcode'}"/>
             </search>
         </field>
     </record>

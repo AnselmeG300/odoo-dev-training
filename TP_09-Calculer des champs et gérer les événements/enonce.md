@@ -1,4 +1,8 @@
-https://www.odoo.com/documentation/19.0/fr/developer/tutorials/server_framework_101/08_compute_onchange.html.
+https://www.odoo.com/documentation/19.0/developer/reference/backend/orm.html#reference-fields-compute
+
+https://www.odoo.com/documentation/19.0/developer/tutorials/server_framework_101/08_compute_onchange.html#inverse-function
+
+
 
 ---
 
@@ -95,7 +99,7 @@ def _onchange_garden(self):
 Dans `estate_property.py` :
 
 ```python
-from odoo import fapi
+from odoo import api
 
 total_area = fields.Float(
     compute="_compute_total_area",
@@ -143,10 +147,7 @@ Dans `estate_property_offer.py` :
 from datetime import timedelta
 
 validity = fields.Integer(
-    compute="_compute_validity",
-    inverse="_compute_date_deadline",
     default=7, 
-    store=True
 )
 date_deadline = fields.Date(
     compute="_compute_date_deadline",
@@ -181,7 +182,7 @@ Toujours dans `estate_property.py` :
 def _onchange_garden(self):
     if self.garden:
         self.garden_area = 10
-        self.garden_orientation = "North"
+        self.garden_orientation = "north"
     else:
         self.garden_area = 0
         self.garden_orientation = False

@@ -2,192 +2,232 @@ https://www.odoo.com/documentation/19.0/fr/developer/tutorials/server_framework_
 
 ---
 
-# 📘 Chapitre 8 : Computed Fields et Onchanges
+# ✅ Checklists – Étendre avec l’héritage
+---
+
+
+À la fin de ce chapitre, tu sauras :
+
+1. Comment **étendre ou modifier le comportement** d’un modèle existant dans Odoo sans le réécrire.
+2. Comment **intercepter les opérations CRUD** (`create`, `write`, `unlink`) pour ajouter des règles métier.
+3. Comment **lier ton module à d’autres modèles existants** (comme `res.users`) en ajoutant des champs personnalisés.
+4. Comment **modifier les vues existantes** sans les casser, grâce à l’**héritage de vues (`inherit_id`) et XPath**.
 
 ---
 
-## 🎯 Objectifs du chapitre
+# 🧩 **1. Concepts fondamentaux**
 
-À la fin de ce chapitre, l’apprenant doit être capable de :
+## 🔹 A. L’héritage Python dans Odoo
 
-1. **Créer des champs calculés (computed fields)** qui dépendent d’autres champs et se mettent à jour automatiquement.
+Chaque modèle Odoo hérite de `models.Model`, qui fournit les méthodes CRUD :
 
-   * Exemple : calculer la surface totale (`total_area`) d’un bien immobilier à partir de la surface habitable et de la surface du jardin.
-   * Exemple : calculer la meilleure offre (`best_price`) parmi les offres reçues.
+* `create()` : création d’un enregistrement,
+* `write()` : mise à jour,
+* `unlink()` : suppression,
+* `read()` : lecture.
 
-2. **Définir une fonction inverse (inverse function)** afin de rendre certains champs calculés modifiables par l’utilisateur.
-
-   * Exemple : calculer la date limite d’une offre (`date_deadline`) à partir de la durée de validité, mais aussi permettre l’édition inverse.
-
-3. **Mettre en place des `onchange`** pour faciliter la saisie utilisateur dans les formulaires.
-
-   * Exemple : lorsqu’on coche le champ `garden`, initialiser automatiquement une surface de jardin et une orientation par défaut.
-
-👉 L’objectif global est donc de rendre le module **plus intelligent et interactif**, en automatisant des calculs et en assistant l’utilisateur dans la saisie.
-
----
-
-## 🧩 Notions abordées
-
-### 1. **Computed Fields (Champs calculés)**
-
-* Un champ calculé n’est **pas stocké directement en base** : sa valeur est **calculée à la volée** par Odoo en fonction d’autres champs.
-* Il est défini avec l’attribut `compute`.
-* On utilise le décorateur `@api.depends` pour indiquer sur quels champs repose le calcul.
-* Par défaut, un champ calculé est **read-only**.
+Tu peux **surcharger ces méthodes** pour ajouter ta logique métier, **mais toujours en appelant `super()`** pour ne pas casser le comportement de base.
 
 Exemple :
 
 ```python
-total_area = fields.Float(compute="_compute_total_area")
-
-@api.depends("living_area", "garden_area")
-def _compute_total_area(self):
-    for record in self:
-        record.total_area = record.living_area + record.garden_area
+@api.model
+def create(self, vals):
+    # ta logique avant la création
+    record = super().create(vals)
+    # ta logique après la création
+    return record
 ```
 
 ---
 
-### 2. **Inverse Function (Fonction inverse)**
+## 🔹 B. Les décorateurs spécifiques à Odoo
 
-* Permet à l’utilisateur de **modifier un champ calculé** depuis l’interface.
-* Odoo met alors à jour automatiquement les champs dépendants via la fonction `inverse`.
-* Utile pour les cas où deux champs dépendent l’un de l’autre (ex. validité ↔ date limite).
+* `@api.model` → utilisé quand le contenu de `self` n’est pas encore créé (utile pour `create`).
+* `@api.ondelete` → permet de gérer les suppressions proprement (plus sûr que surcharger `unlink`).
+* `@api.constrains` → valide des données après écriture (vu dans le chapitre sur les contraintes).
 
-Exemple :
+---
+
+## 🔹 C. Les deux types d’héritage dans Odoo
+
+L’image que tu as envoyée montre clairement **les deux approches possibles** 👇
+
+| Type d’héritage                    | Mots-clés                                | But                                    | Caractéristiques                                                 |
+| ---------------------------------- | ---------------------------------------- | -------------------------------------- | ---------------------------------------------------------------- |
+| **Héritage classique (extension)** | `_inherit = 'model.name'`                | Étendre un modèle existant             | Même table en BDD, ajoute/override champs et méthodes            |
+| **Héritage par délégation**        | `_inherits = {'model.name': 'field_id'}` | Créer un nouveau modèle lié à un autre | Nouvelle table, jointure automatique, accès aux champs du parent |
+
+---
+
+# 🧱 **2. Implémentation pas à pas**
+
+## 🧩 Étape 1 — Étendre la logique CRUD du module
+
+### 🔸 Objectif :
+
+1. **Empêcher la suppression** d’une propriété sauf si son état est `New` ou `Cancelled`.
+2. **Mettre à jour l’état** d’un bien à `Offer Received` lorsqu’une offre est créée.
+3. **Empêcher la création d’une offre** avec un prix inférieur à une offre déjà existante.
+
+---
+
+### 🗂️ Fichier : `models/estate_property.py`
 
 ```python
-date_deadline = fields.Date(
-    compute="_compute_date_deadline",
-    inverse="_inverse_date_deadline",
-    store=True
-)
+from odoo import api, fields, models
+from odoo.exceptions import UserError
+
+class EstateProperty(models.Model):
+    _inherit = "estate.property"
+
+    @api.ondelete(at_uninstall=False)
+    def _check_can_delete(self):
+        for record in self:
+            if record.state not in ['new', 'cancelled']:
+                raise UserError("You can only delete properties that are New or Cancelled.")
 ```
+
+🧠 **Explication :**
+
+* Le décorateur `@api.ondelete` est préféré à `unlink` car il est plus sûr (s’exécute même lors d’une désinstallation du module).
+* Si le `state` n’est pas dans `['new', 'cancelled']`, on bloque la suppression.
 
 ---
 
-### 3. **Onchange**
-
-* Mécanisme qui modifie d’autres champs **dans le formulaire**, sans sauvegarde en base, dès qu’un champ change.
-* Utile pour **aider l’utilisateur à la saisie**.
-* À ne pas utiliser pour de la logique métier, car les `onchange` ne s’exécutent que dans l’interface.
-
-Exemple :
+### 🗂️ Fichier : `models/estate_property_offer.py`
 
 ```python
-@api.onchange("garden")
-def _onchange_garden(self):
-    if self.garden:
-        self.garden_area = 10
-        self.garden_orientation = "North"
-    else:
-        self.garden_area = 0
-        self.garden_orientation = False
+from odoo import api, fields, models
+from odoo.exceptions import UserError
+
+class EstatePropertyOffer(models.Model):
+    _inherit = "estate.property.offer"
+
+    @api.model
+    def create(self, vals):
+        property_id = vals.get("property_id")
+        if property_id:
+            property_rec = self.env["estate.property"].browse(property_id)
+            # Vérifier qu’il n’existe pas déjà une offre supérieure
+            existing_offer = self.search([("property_id", "=", property_id)], order="price desc", limit=1)
+            if existing_offer and vals.get("price", 0) < existing_offer.price:
+                raise UserError("You cannot create an offer lower than an existing one.")
+
+            # Met à jour l’état du bien
+            property_rec.state = "offer_received"
+
+        return super().create(vals)
 ```
+
+🧠 **Explication :**
+
+* `self.env["estate.property"].browse(property_id)` crée un recordset basé sur l’ID du bien.
+* On cherche la meilleure offre existante (`order="price desc"`) pour la comparaison.
+* Si le prix proposé est inférieur → `UserError`.
+* On met à jour le champ `state` du bien à `"offer_received"`.
 
 ---
 
-## 🛠️ Implémentation (Pratique)
+## 🧩 Étape 2 — Hériter du modèle `res.users`
 
-### Étape 1 : Calculer la surface totale (`total_area`)
+### 🔸 Objectif :
 
-Dans `estate_property.py` :
+Afficher, dans la fiche utilisateur, la **liste des propriétés** dont il est le commercial (`salesperson_id`).
+
+### 🗂️ Fichier : `models/res_users.py`
 
 ```python
-from odoo import fapi
+from odoo import fields, models
 
-total_area = fields.Float(
-    compute="_compute_total_area",
-    string="Total Area (sqm)"
-)
+class ResUsers(models.Model):
+    _inherit = "res.users"
 
-@api.depends("living_area", "garden_area")
-def _compute_total_area(self):
-    for record in self:
-        record.total_area = record.living_area + record.garden_area
+    property_ids = fields.One2many(
+        "estate.property",
+        "salesperson_id",
+        string="Properties",
+        domain=[("state", "in", ["new", "offer_received", "offer_accepted"])],
+    )
 ```
 
-👉 Ajouter `total_area` dans l’onglet **Description** de la vue formulaire.
+🧠 **Explication :**
+
+* `_inherit` → on étend le modèle `res.users`.
+* `property_ids` → inverse du champ `salesperson_id` déjà existant sur `estate.property`.
+* Le `domain` filtre les propriétés visibles selon leur état.
 
 ---
 
-### Étape 2 : Calculer la meilleure offre (`best_price`)
+## 🧩 Étape 3 — Étendre la vue `res.users`
 
-Toujours dans `estate_property.py` :
+### 🔸 Objectif :
 
-```python
-best_price = fields.Float(
-    compute="_compute_best_price",
-    string="Best Offer"
-)
+Ajouter un onglet "Properties" dans la fiche utilisateur.
 
-@api.depends("offer_ids.price")
-def _compute_best_price(self):
-    for record in self:
-        if record.offer_ids:
-            record.best_price = max(record.offer_ids.mapped("price"))
-        else:
-            record.best_price = 0.0
+### 🗂️ Fichier : `views/res_users_views.xml`
+
+```xml
+<odoo>
+    <record id="view_users_form_inherit_estate" model="ir.ui.view">
+        <field name="name">res.users.form.inherit.estate</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Properties">
+                    <field name="property_ids">
+                        <list>
+                            <field name="name"/>
+                            <field name="expected_price"/>
+                            <field name="state"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
 ```
 
-👉 Ajouter `best_price` dans la vue formulaire (colonne des prix).
+🧠 **Explication :**
+
+* `inherit_id="base.view_users_form"` → on hérite de la vue utilisateur standard.
+* `xpath` → localise le `<notebook>` pour y insérer un nouvel onglet.
+* L’onglet affiche la liste des propriétés gérées par l’utilisateur.
 
 ---
 
-### Étape 3 : Gérer la validité et la date limite (`estate.property.offer`)
+# ✅ **3. Résultat attendu**
 
-Dans `estate_property_offer.py` :
+### Dans la fiche d’un utilisateur :
 
-```python
-from datetime import timedelta
+* Un nouvel onglet “Properties” apparaît.
+* Il liste toutes les propriétés où il est le commercial.
+* Les propriétés sont filtrées selon leur état (`New`, `Offer Received`, `Offer Accepted`).
 
-validity = fields.Integer(default=7)
-date_deadline = fields.Date(
-    compute="_compute_date_deadline",
-    inverse="_inverse_date_deadline",
-    store=True
-)
+### Dans le module “Estate” :
 
-@api.depends("validity", "create_date")
-def _compute_date_deadline(self):
-    for record in self:
-        create_date = record.create_date or fields.Date.today()
-        record.date_deadline = create_date + timedelta(days=record.validity)
-
-def _inverse_date_deadline(self):
-    for record in self:
-        create_date = record.create_date or fields.Date.today()
-        record.validity = (record.date_deadline - create_date).days
-```
-
-👉 Ajouter `validity` et `date_deadline` dans la **vue formulaire et liste des offres**.
+* Impossible de supprimer un bien sauf s’il est `New` ou `Cancelled`.
+* Quand une offre est créée → le bien passe en `Offer Received`.
+* Impossible de créer une offre plus basse qu’une précédente.
 
 ---
 
-### Étape 4 : Onchange pour `garden`
+# 🧩 **Structure finale des fichiers**
 
-Toujours dans `estate_property.py` :
-
-```python
-@api.onchange("garden")
-def _onchange_garden(self):
-    if self.garden:
-        self.garden_area = 10
-        self.garden_orientation = "North"
-    else:
-        self.garden_area = 0
-        self.garden_orientation = False
 ```
-
-👉 Tester en cochant/décochant le champ dans le formulaire.
+estate/
+│
+├── models/
+│   ├── estate_property.py              → logique CRUD (unlink)
+│   ├── estate_property_offer.py        → logique create
+│   └── res_users.py                    → extension du modèle utilisateur
+│
+└── views/
+    └── res_users_views.xml             → héritage de la vue utilisateur
+```
 
 ---
 
-✅ **Objectifs atteints :**
-
-* Champs calculés (`total_area`, `best_price`).
-* Fonction inverse (`date_deadline` ↔ `validity`).
-* Assistance utilisateur avec `onchange` (`garden`).
-
-
+Souhaites-tu que je t’ajoute à la suite la **section suivante du tutoriel (chapitre 13)**, où on aborde l’**interaction entre modules** (et notamment la relation entre “Estate” et “Accounting” dans Odoo) ?

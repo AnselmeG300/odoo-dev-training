@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 {
-    'name': 'estate',
+    'name': 'Estate',
     'depends': ['base'],
     'category': 'Tutorials',
     'application': True,
@@ -13,5 +14,5 @@
         'views/estate_property_tag_views.xml',
         'views/estate_property_offer_views.xml',
         'views/estate_menus.xml',
-    ],
+    ]
 }

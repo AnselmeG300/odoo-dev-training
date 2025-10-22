@@ -1,4 +1,4 @@
-
+https://www.odoo.com/documentation/19.0/developer/tutorials/server_framework_101/01_architecture.html#odoo-modules
 
 ---
 
@@ -35,7 +35,7 @@ Ensuite, on l’enrichira progressivement avec des fonctionnalités.
 Dans ton répertoire `tutorials`, ajoute un dossier `estate` :
 
 ```bash
-/home/$USER/src/tutorials/estate/
+costum_addons/tutorials/estate/
 ```
 
 ---
@@ -47,7 +47,7 @@ Un module Odoo doit contenir **au minimum** deux fichiers :
 1. `__init__.py` → pour l’instant vide.
 
    ```bash
-   /home/$USER/src/tutorials/estate/__init__.py
+   costum_addons/tutorials/estate/__init__.py
    ```
 
 2. `__manifest__.py` → obligatoire, décrit le module.

@@ -2,192 +2,238 @@ https://www.odoo.com/documentation/19.0/fr/developer/tutorials/server_framework_
 
 ---
 
-# 📘 Chapitre 8 : Computed Fields et Onchanges
+# ✅ Checklists – A Brief History of QWeb
 
 ---
 
-## 🎯 Objectifs du chapitre
+À la fin de ce chapitre, tu sauras :
 
-À la fin de ce chapitre, l’apprenant doit être capable de :
-
-1. **Créer des champs calculés (computed fields)** qui dépendent d’autres champs et se mettent à jour automatiquement.
-
-   * Exemple : calculer la surface totale (`total_area`) d’un bien immobilier à partir de la surface habitable et de la surface du jardin.
-   * Exemple : calculer la meilleure offre (`best_price`) parmi les offres reçues.
-
-2. **Définir une fonction inverse (inverse function)** afin de rendre certains champs calculés modifiables par l’utilisateur.
-
-   * Exemple : calculer la date limite d’une offre (`date_deadline`) à partir de la durée de validité, mais aussi permettre l’édition inverse.
-
-3. **Mettre en place des `onchange`** pour faciliter la saisie utilisateur dans les formulaires.
-
-   * Exemple : lorsqu’on coche le champ `garden`, initialiser automatiquement une surface de jardin et une orientation par défaut.
-
-👉 L’objectif global est donc de rendre le module **plus intelligent et interactif**, en automatisant des calculs et en assistant l’utilisateur dans la saisie.
+* Ce qu’est **QWeb**, le moteur de templates d’Odoo ;
+* Comment il est utilisé dans les **Kanban Views** (et dans les rapports PDF ou site web) ;
+* Comment **créer ta propre vue Kanban** pour afficher les propriétés avec un design personnalisé ;
+* Comment **utiliser les directives QWeb** (`t-if`, `t-foreach`, etc.) pour ajouter de la logique conditionnelle ;
+* Et comment **grouper dynamiquement les cartes Kanban** (ici, par *Property Type*).
 
 ---
 
-## 🧩 Notions abordées
+# 🧠 **1️⃣ Comprendre QWeb**
 
-### 1. **Computed Fields (Champs calculés)**
+## 🔹 Qu’est-ce que QWeb ?
 
-* Un champ calculé n’est **pas stocké directement en base** : sa valeur est **calculée à la volée** par Odoo en fonction d’autres champs.
-* Il est défini avec l’attribut `compute`.
-* On utilise le décorateur `@api.depends` pour indiquer sur quels champs repose le calcul.
-* Par défaut, un champ calculé est **read-only**.
+**QWeb** est le moteur de templating d’Odoo — c’est un langage XML utilisé pour **générer du HTML** dynamiquement.
 
-Exemple :
+C’est un peu comme **Jinja2** (Python), **Twig** (PHP) ou **ERB** (Ruby),
+mais intégré directement dans Odoo, avec une syntaxe adaptée à son environnement.
 
-```python
-total_area = fields.Float(compute="_compute_total_area")
+---
 
-@api.depends("living_area", "garden_area")
-def _compute_total_area(self):
-    for record in self:
-        record.total_area = record.living_area + record.garden_area
+### 🧩 QWeb dans Odoo est utilisé pour :
+
+| Usage               | Exemple concret                                             |
+| ------------------- | ----------------------------------------------------------- |
+| 🖼️ Vues dynamiques | Les vues **Kanban** (comme dans CRM, projets, ventes, etc.) |
+| 🧾 Rapports PDF     | Factures, bons de commande, etc.                            |
+| 🌐 Pages web        | Modules *Website* et *Portal*                               |
+| 🧱 Snippets visuels | Cartes, blocs HTML enrichis                                 |
+
+---
+
+## 🔹 Structure d’un template QWeb
+
+```xml
+<templates>
+    <t t-name="kanban-box">
+        <div>
+            <field name="name"/>
+        </div>
+    </t>
+</templates>
+```
+
+💡 **Explication :**
+
+* `<templates>` : contient un ou plusieurs templates QWeb.
+* `<t>` : balise spéciale “template” de QWeb.
+* `t-name="kanban-box"` : nom du template racine pour le Kanban.
+* `<field name="name"/>` : champ du modèle affiché.
+
+---
+
+## 🔹 Les objets disponibles dans un template Kanban
+
+| Objet                        | Description                                          |
+| ---------------------------- | ---------------------------------------------------- |
+| `record`                     | Le record courant (ex: une propriété)                |
+| `record.fieldname.value`     | Valeur du champ affichée selon le format utilisateur |
+| `record.fieldname.raw_value` | Valeur brute en base de données                      |
+| `t-if`, `t-foreach`          | Directives QWeb pour conditions et boucles           |
+
+---
+
+# 🧩 **2️⃣ Le Kanban View dans Odoo**
+
+Les **vues Kanban** permettent de représenter des enregistrements sous forme de **cartes visuelles**.
+Elles sont très utilisées dans les modules CRM, Project, Helpdesk, etc.
+
+Exemple simple :
+
+```xml
+<kanban>
+    <templates>
+        <t t-name="kanban-box">
+            <div>
+                <field name="name"/>
+            </div>
+        </t>
+    </templates>
+</kanban>
 ```
 
 ---
 
-### 2. **Inverse Function (Fonction inverse)**
+# ⚙️ **3️⃣ Implémentation — Kanban View pour Real Estate**
 
-* Permet à l’utilisateur de **modifier un champ calculé** depuis l’interface.
-* Odoo met alors à jour automatiquement les champs dépendants via la fonction `inverse`.
-* Utile pour les cas où deux champs dépendent l’un de l’autre (ex. validité ↔ date limite).
+Nous allons ajouter une **vue Kanban** pour les propriétés (`estate.property`).
 
-Exemple :
+---
 
-```python
-date_deadline = fields.Date(
-    compute="_compute_date_deadline",
-    inverse="_inverse_date_deadline",
-    store=True
-)
+## 🗂️ Fichier : `views/estate_property_views.xml`
+
+### 🔸 Étape 1 — Vue minimale
+
+```xml
+<odoo>
+    <record id="view_property_kanban" model="ir.ui.view">
+        <field name="name">estate.property.kanban</field>
+        <field name="model">estate.property</field>
+        <field name="arch" type="xml">
+            <kanban>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_card">
+                            <field name="name"/>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Action update -->
+    <record id="action_estate_property" model="ir.actions.act_window">
+        <field name="view_mode">kanban,list,form</field>
+    </record>
+</odoo>
+```
+
+💡 Cela crée une vue Kanban de base avec uniquement le nom de la propriété.
+
+---
+
+## 🧩 Étape 2 — Ajouter des champs et conditions (QWeb directives)
+
+On va enrichir le Kanban :
+
+* `expected_price`, `best_offer`, `selling_price`, `tag_ids`
+* Afficher certaines infos **selon l’état** du bien :
+
+  * `best_offer` → seulement si état = `offer_received`
+  * `selling_price` → seulement si état = `offer_accepted`
+
+```xml
+<kanban default_group_by="property_type_id" group_create="false" class="o_kanban_example">
+    <field name="state"/>
+    <field name="expected_price"/>
+    <field name="best_offer"/>
+    <field name="selling_price"/>
+    <field name="tag_ids"/>
+    <templates>
+        <t t-name="kanban-box">
+            <div class="oe_kanban_card o_kanban_record">
+                <div class="o_kanban_primary_left">
+                    <strong><field name="name"/></strong>
+                </div>
+
+                <div>
+                    <span>Expected Price: </span>
+                    <field name="expected_price"/>
+                </div>
+
+                <div t-if="record.state.raw_value == 'offer_received'">
+                    <span>Best Offer: </span>
+                    <field name="best_offer"/>
+                </div>
+
+                <div t-if="record.state.raw_value == 'offer_accepted'">
+                    <span>Selling Price: </span>
+                    <field name="selling_price"/>
+                </div>
+
+                <div>
+                    <field name="tag_ids" widget="many2many_tags"/>
+                </div>
+            </div>
+        </t>
+    </templates>
+</kanban>
 ```
 
 ---
 
-### 3. **Onchange**
+## 🧩 Étape 3 — Ajouter un **groupement automatique** (par type)
 
-* Mécanisme qui modifie d’autres champs **dans le formulaire**, sans sauvegarde en base, dès qu’un champ change.
-* Utile pour **aider l’utilisateur à la saisie**.
-* À ne pas utiliser pour de la logique métier, car les `onchange` ne s’exécutent que dans l’interface.
+Grâce à l’attribut `default_group_by`, on regroupe les propriétés par **Property Type** :
 
-Exemple :
-
-```python
-@api.onchange("garden")
-def _onchange_garden(self):
-    if self.garden:
-        self.garden_area = 10
-        self.garden_orientation = "North"
-    else:
-        self.garden_area = 0
-        self.garden_orientation = False
+```xml
+<kanban default_group_by="property_type_id" group_create="false">
 ```
+
+* `default_group_by` → regroupe automatiquement par le champ donné.
+* `group_create="false"` → empêche le *drag & drop* pour éviter de changer le type d’un bien.
 
 ---
 
-## 🛠️ Implémentation (Pratique)
+# 🎨 **4️⃣ Résultat attendu**
 
-### Étape 1 : Calculer la surface totale (`total_area`)
+Tu obtiens un **Kanban propre et interactif** comme celui-ci 👇
 
-Dans `estate_property.py` :
+📸 *(correspond à la capture que tu as envoyée)*
 
-```python
-from odoo import fapi
+| Group         | Properties displayed               |
+| ------------- | ---------------------------------- |
+| **House**     | House in Brussels / House in Arlon |
+| **Apartment** | Apartment in Namur                 |
+| **Castle**    | Castle in Bouillon                 |
 
-total_area = fields.Float(
-    compute="_compute_total_area",
-    string="Total Area (sqm)"
-)
+Chaque carte montre :
 
-@api.depends("living_area", "garden_area")
-def _compute_total_area(self):
-    for record in self:
-        record.total_area = record.living_area + record.garden_area
-```
-
-👉 Ajouter `total_area` dans l’onglet **Description** de la vue formulaire.
+* Le **nom** de la propriété,
+* Le **prix attendu**,
+* Le **meilleur prix** (si offre reçue),
+* Le **prix de vente** (si offre acceptée),
+* Et les **tags colorés** (`cozy`, `exceptional`, etc.)
 
 ---
 
-### Étape 2 : Calculer la meilleure offre (`best_price`)
+# 🧩 **5️⃣ En résumé**
 
-Toujours dans `estate_property.py` :
-
-```python
-best_price = fields.Float(
-    compute="_compute_best_price",
-    string="Best Offer"
-)
-
-@api.depends("offer_ids.price")
-def _compute_best_price(self):
-    for record in self:
-        if record.offer_ids:
-            record.best_price = max(record.offer_ids.mapped("price"))
-        else:
-            record.best_price = 0.0
-```
-
-👉 Ajouter `best_price` dans la vue formulaire (colonne des prix).
+| Élément                    | Description                                                      |
+| -------------------------- | ---------------------------------------------------------------- |
+| **QWeb**                   | Moteur de templates XML d’Odoo (génère HTML, PDF, etc.)          |
+| **Kanban**                 | Vue flexible utilisant QWeb pour représenter les enregistrements |
+| **t-if**                   | Directive conditionnelle QWeb                                    |
+| **record.field.raw_value** | Accès à la valeur brute d’un champ                               |
+| **default_group_by**       | Regroupe automatiquement les cartes par champ                    |
+| **group_create="false"**   | Désactive le drag & drop de groupes                              |
 
 ---
 
-### Étape 3 : Gérer la validité et la date limite (`estate.property.offer`)
+# 🧠 Pour aller plus loin
 
-Dans `estate_property_offer.py` :
+Tu peux ensuite :
 
-```python
-from datetime import timedelta
-
-validity = fields.Integer(default=7)
-date_deadline = fields.Date(
-    compute="_compute_date_deadline",
-    inverse="_inverse_date_deadline",
-    store=True
-)
-
-@api.depends("validity", "create_date")
-def _compute_date_deadline(self):
-    for record in self:
-        create_date = record.create_date or fields.Date.today()
-        record.date_deadline = create_date + timedelta(days=record.validity)
-
-def _inverse_date_deadline(self):
-    for record in self:
-        create_date = record.create_date or fields.Date.today()
-        record.validity = (record.date_deadline - create_date).days
-```
-
-👉 Ajouter `validity` et `date_deadline` dans la **vue formulaire et liste des offres**.
-
----
-
-### Étape 4 : Onchange pour `garden`
-
-Toujours dans `estate_property.py` :
-
-```python
-@api.onchange("garden")
-def _onchange_garden(self):
-    if self.garden:
-        self.garden_area = 10
-        self.garden_orientation = "North"
-    else:
-        self.garden_area = 0
-        self.garden_orientation = False
-```
-
-👉 Tester en cochant/décochant le champ dans le formulaire.
-
----
-
-✅ **Objectifs atteints :**
-
-* Champs calculés (`total_area`, `best_price`).
-* Fonction inverse (`date_deadline` ↔ `validity`).
-* Assistance utilisateur avec `onchange` (`garden`).
-
+* Ajouter des **icônes** selon l’état (`fa-check`, `fa-clock`, etc.),
+* Colorer les cartes avec du CSS conditionnel (`t-attf-class`),
+* Intégrer des **images** (ex: photos de biens),
+* Ou même utiliser les **actions rapides** (petits boutons à droite).
 

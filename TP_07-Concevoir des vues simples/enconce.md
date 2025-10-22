@@ -1,5 +1,4 @@
-https://www.odoo.com/documentation/19.0/fr/developer/tutorials/server_framework_101/06_basicviews.html
-
+https://www.odoo.com/documentation/19.0/developer/tutorials/backend.html?highlight=views#basic-views
 
 
 ---
@@ -14,7 +13,7 @@ Nous allons créer **trois vues personnalisées** pour notre modèle `estate.pro
 2. **Form view (vue formulaire)** → organiser les champs d’un bien immobilier de façon claire (groupes, onglets).
 3. **Search view (vue de recherche)** → ajouter des filtres et un regroupement (`group by`) pour faciliter la navigation.
 
-👉 À la fin, tu auras une **interface utilisateur complète** (comme sur tes captures) pour gérer les propriétés.
+👉 À la fin, tu auras une **interface utilisateur complète** pour gérer les propriétés.
 
 ---
 
@@ -52,12 +51,10 @@ Fichier : `estate/views/estate_property_views.xml`
 </odoo>
 ```
 
-👉 Ce code correspond exactement à ta **capture 1 (list view)**.
+
 
 EXPLICATION DES PARAMETRES: 
 
-Parfait 👌 tu poses exactement les **bonnes questions** que se posent aussi beaucoup d’apprenants.
-On va décortiquer **ligne par ligne** ton XML et répondre à toutes tes interrogations :
 
 ---
 
@@ -184,10 +181,6 @@ Exemples :
 
 ---
 
-👉 Veux-tu que je te montre aussi **la différence claire** entre les 3 types de vues (`list`, `form`, `search`) avec un **exemple minimal de chacun** et un schéma d’articulation avec l’action/menu ?
-
-
----
 
 ## 🔹 2. Les Form Views
 
@@ -321,6 +314,5 @@ Il faut déclarer le fichier XML dans ton `__manifest__.py` :
 2. **Vue formulaire** → bien structuré avec groupes et onglet description.
 3. **Vue recherche** → filtres + group by utilisables.
 
-Tu obtiens exactement tes **captures 1, 2 et 3**, sans bug.
 
 

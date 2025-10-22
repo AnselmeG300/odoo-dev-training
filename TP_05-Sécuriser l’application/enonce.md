@@ -1,4 +1,4 @@
-https://www.odoo.com/documentation/19.0/fr/developer/tutorials/server_framework_101/04_securityintro.html
+https://www.odoo.com/documentation/19.0/developer/tutorials/restrict_data_access.html
 
 ---
 

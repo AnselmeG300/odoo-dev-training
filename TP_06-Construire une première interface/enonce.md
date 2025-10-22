@@ -1,19 +1,4 @@
-https://www.odoo.com/documentation/19.0/fr/developer/tutorials/server_framework_101/05_firstui.html
-
-Parfait 👌 Tu touches ici à un point crucial : **l’introduction des vues en XML dans Odoo**.
-C’est là où beaucoup d’apprenants se perdent, car ils recopient des bouts de code sans comprendre :
-
-* ce qu’est une **action**,
-* ce qu’est un **menuitem**,
-* à quoi sert chaque **attribut** XML,
-* et surtout comment tout cela **s’articule avec les modèles Python**.
-
-Je vais donc t’expliquer **pas à pas** :
-
-1. la logique générale (avec analogies objet),
-2. le rôle de chaque élément XML,
-3. les étapes pratiques du chapitre,
-   pour que toi et tes apprenants compreniez vraiment **le “pourquoi” derrière le code**.
+https://www.odoo.com/documentation/19.0/developer/reference/backend/actions.html#reference-actions-window
 
 ---
 

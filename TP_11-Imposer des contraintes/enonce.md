@@ -1,193 +1,240 @@
-https://www.odoo.com/documentation/19.0/fr/developer/tutorials/server_framework_101/08_compute_onchange.html.
+https://www.odoo.com/documentation/19.0/developer/reference/backend/orm.html#constraints-and-indexes
+
+https://www.odoo.com/documentation/19.0/developer/reference/backend/orm.html#odoo.api.constrains
 
 ---
 
-# 📘 Chapitre 8 : Computed Fields et Onchanges
+# ✅ Checklists – Imposer des contraintes
 
 ---
 
-## 🎯 Objectifs du chapitre
+## 🎯 **Objectif général du chapitre**
 
-À la fin de ce chapitre, l’apprenant doit être capable de :
+À la fin de ce chapitre, tu sauras :
 
-1. **Créer des champs calculés (computed fields)** qui dépendent d’autres champs et se mettent à jour automatiquement.
-
-   * Exemple : calculer la surface totale (`total_area`) d’un bien immobilier à partir de la surface habitable et de la surface du jardin.
-   * Exemple : calculer la meilleure offre (`best_price`) parmi les offres reçues.
-
-2. **Définir une fonction inverse (inverse function)** afin de rendre certains champs calculés modifiables par l’utilisateur.
-
-   * Exemple : calculer la date limite d’une offre (`date_deadline`) à partir de la durée de validité, mais aussi permettre l’édition inverse.
-
-3. **Mettre en place des `onchange`** pour faciliter la saisie utilisateur dans les formulaires.
-
-   * Exemple : lorsqu’on coche le champ `garden`, initialiser automatiquement une surface de jardin et une orientation par défaut.
-
-👉 L’objectif global est donc de rendre le module **plus intelligent et interactif**, en automatisant des calculs et en assistant l’utilisateur dans la saisie.
+1. 🔒 Empêcher **l’enregistrement de données incorrectes** (ex. prix négatif, doublons).
+2. 🧮 Appliquer des **règles automatiques de validation** au niveau de la base de données (via SQL).
+3. 🧠 Définir des **règles plus complexes côté Python** (via des méthodes de validation).
+4. ⚖️ Comprendre **quand utiliser SQL et quand utiliser Python** pour gérer les contraintes.
 
 ---
 
-## 🧩 Notions abordées
+## 🧱 **Contexte**
 
-### 1. **Computed Fields (Champs calculés)**
+Jusqu’ici, on a construit notre module en ajoutant :
 
-* Un champ calculé n’est **pas stocké directement en base** : sa valeur est **calculée à la volée** par Odoo en fonction d’autres champs.
-* Il est défini avec l’attribut `compute`.
-* On utilise le décorateur `@api.depends` pour indiquer sur quels champs repose le calcul.
-* Par défaut, un champ calculé est **read-only**.
+* des champs,
+* des vues,
+* des relations,
+* et même des actions (pour vendre, annuler, etc.).
 
-Exemple :
+Mais actuellement, rien n’empêche :
+
+* de créer un bien immobilier avec un **prix négatif**,
+* d’avoir **deux types de propriété avec le même nom**,
+* ou d’accepter une **offre trop basse**.
+
+➡️ Il faut donc mettre en place des mécanismes de **contrôle automatique des données**.
+
+Odoo propose deux outils puissants pour cela :
+
+* Les **SQL Constraints** (côté base de données)
+* Les **Python Constraints** (côté logique métier)
+
+---
+
+## 🧩 **1. Les contraintes SQL (`models.Constraints`)**
+
+### 📖 Définition
+
+Les **contraintes SQL** permettent de vérifier certaines règles directement **dans la base de données PostgreSQL**.
+Elles sont rapides, efficaces et parfaites pour des validations simples (positif, unique, etc.).
+
+### 🧠 Exemple conceptuel
 
 ```python
-total_area = fields.Float(compute="_compute_total_area")
+_my_check = models.Constraint("CHECK (x > y)", "x > y is not true")
+```
 
-@api.depends("living_area", "garden_area")
-def _compute_total_area(self):
+Ce code dit :
+
+> “La valeur du champ `x` doit toujours être supérieure la valeur du champ `y`”
+
+### 💡 Dans notre module immobilier
+
+On va définir les règles suivantes :
+
+#### 🔸 Sur le modèle `estate.property` :
+
+* Le **prix attendu** (`expected_price`) doit être **strictement positif**
+* Le **prix de vente** (`selling_price`) doit être **positif**
+
+#### 🔸 Sur le modèle `estate.property.offer` :
+
+* Le **prix de l’offre** (`price`) doit être **strictement positif**
+
+#### 🔸 Sur les modèles `estate.property.type` et `estate.property.tag` :
+
+* Le **nom** (`name`) doit être **unique**
+
+---
+
+### 🧰 **Implémentation (Exemple dans Odoo 19)**
+
+```python
+from odoo import models, fields
+
+class EstateProperty(models.Model):
+    _name = "estate.property"
+    _description = "Real Estate Property"
+
+    name = fields.Char(required=True)
+    expected_price = fields.Float(required=True)
+    selling_price = fields.Float()
+
+    _unique_property_name = models.Constraint("UNIQUE (name)", "The property name must be unique.")
+    _check_expected_price_positive = models.Constraint("CHECK (expected_price > 0)", "The expected price must be strictly positive.")
+    _check_selling_price_positive = models.Constraint("CHECK (selling_price >= 0)", "The selling price must be positive.")
+```
+
+Et pour le modèle des offres :
+
+```python
+class EstatePropertyOffer(models.Model):
+    _name = "estate.property.offer"
+    _description = "Property Offer"
+
+    price = fields.Float(required=True)
+
+    _check_offer_price_positive = models.Constraint("CHECK (price > 0)", "The offer price must be strictly positive.")
+    _check_validity_positive = models.Constraint("CHECK (validity > 0)", "The validity period must be positive.")
+```
+
+Pour les noms uniques :
+
+```python
+class EstatePropertyType(models.Model):
+    _name = "estate.property.type"
+    _description = "Property Type"
+
+    name = fields.Char(required=True)
+
+    _unique_property_type_name = models.Constraint("UNIQUE (name)", "The property type name must be unique.")
+```
+
+```python
+class EstatePropertyTag(models.Model):
+    _name = "estate.property.tag"
+    _description = "Property Tag"
+
+    name = fields.Char(required=True)
+
+    _unique_property_tag_name = models.Constraint("UNIQUE (name)", "The property tag name must be unique.")
+```
+
+---
+
+### ⚠️ **Erreurs fréquentes**
+
+Si ta base contient déjà des valeurs invalides (ex. `expected_price = 0`), Odoo te refusera d’ajouter la contrainte, avec un message :
+
+```
+ERROR odoo.schema: Table 'estate_property': unable to add constraint 'estate_property_check_price' as CHECK(expected_price > 0)
+```
+
+➡️ Supprime ou corrige les données avant d’ajouter la contrainte.
+
+---
+
+## 🧠 **2. Les contraintes Python (`@api.constrains`)**
+
+### 📖 Définition
+
+Les contraintes Python servent à effectuer **des vérifications plus complexes** que celles possibles avec SQL.
+
+Elles sont exécutées **automatiquement** dès qu’un champ concerné est modifié.
+Si la règle n’est pas respectée, Odoo lève une **exception** (erreur bloquante).
+
+### 🧠 Exemple conceptuel
+
+```python
+from odoo.exceptions import ValidationError
+
+@api.constrains('end_date')
+def _check_date_end(self):
     for record in self:
-        record.total_area = record.living_area + record.garden_area
+        if record.end_date < fields.Date.today():
+            raise ValidationError("End date cannot be in the past.")
 ```
 
 ---
 
-### 2. **Inverse Function (Fonction inverse)**
+### 💡 Dans notre module immobilier
 
-* Permet à l’utilisateur de **modifier un champ calculé** depuis l’interface.
-* Odoo met alors à jour automatiquement les champs dépendants via la fonction `inverse`.
-* Utile pour les cas où deux champs dépendent l’un de l’autre (ex. validité ↔ date limite).
+Nous voulons qu’une **offre acceptée** ne puisse pas avoir un prix trop bas.
+➡️ Le prix de vente (`selling_price`) ne doit pas être **inférieur à 90% du prix attendu (`expected_price`)**.
 
-Exemple :
+### 🧰 **Implémentation**
 
 ```python
-date_deadline = fields.Date(
-    compute="_compute_date_deadline",
-    inverse="_inverse_date_deadline",
-    store=True
-)
+from odoo import api, fields, models
+from odoo.exceptions import ValidationError
+from odoo.tools.float_utils import float_compare, float_is_zero
+
+class EstateProperty(models.Model):
+    _inherit = "estate.property"
+
+    @api.constrains('selling_price', 'expected_price')
+    def _check_selling_price(self):
+        for record in self:
+            if float_is_zero(record.selling_price, precision_rounding=0.01):
+                continue  # pas encore de prix de vente, on ne bloque pas
+            if float_compare(record.selling_price, record.expected_price * 0.9, precision_rounding=0.01) < 0:
+                raise ValidationError("The selling price cannot be lower than 90% of the expected price.")
 ```
+
+### 🔎 Explication :
+
+* `@api.constrains('selling_price', 'expected_price')`
+  → La méthode s’exécute dès que l’un de ces champs change.
+* `float_is_zero` et `float_compare`
+  → Fonctions précises pour comparer des nombres flottants (évite les erreurs d’arrondi).
+* `ValidationError`
+  → Bloque l’enregistrement si la condition n’est pas respectée.
 
 ---
 
-### 3. **Onchange**
+## ⚖️ **Comparaison SQL vs Python**
 
-* Mécanisme qui modifie d’autres champs **dans le formulaire**, sans sauvegarde en base, dès qu’un champ change.
-* Utile pour **aider l’utilisateur à la saisie**.
-* À ne pas utiliser pour de la logique métier, car les `onchange` ne s’exécutent que dans l’interface.
+| Critère             | SQL Constraint          | Python Constraint                   |
+| ------------------- | ----------------------- | ----------------------------------- |
+| Exécution           | Base de données         | Serveur Odoo                        |
+| Performance         | ⚡ Très rapide           | 🧮 Plus lent                        |
+| Complexité          | Simple (>=, <=, unique) | Complexe (calculs, relations)       |
+| Message utilisateur | Automatique             | Personnalisé                        |
+| Exemple d’usage     | Prix > 0                | Prix de vente ≥ 90% du prix attendu |
 
-Exemple :
+💡 **Bon réflexe :**
 
-```python
-@api.onchange("garden")
-def _onchange_garden(self):
-    if self.garden:
-        self.garden_area = 10
-        self.garden_orientation = "North"
-    else:
-        self.garden_area = 0
-        self.garden_orientation = False
-```
+> Utilise SQL pour les validations simples et Python pour les règles métier avancées.
 
 ---
 
-## 🛠️ Implémentation (Pratique)
+## 📸 **Résultats visibles dans l’interface**
 
-### Étape 1 : Calculer la surface totale (`total_area`)
-
-Dans `estate_property.py` :
-
-```python
-from odoo import fapi
-
-total_area = fields.Float(
-    compute="_compute_total_area",
-    string="Total Area (sqm)"
-)
-
-@api.depends("living_area", "garden_area")
-def _compute_total_area(self):
-    for record in self:
-        record.total_area = record.living_area + record.garden_area
-```
-
-👉 Ajouter `total_area` dans l’onglet **Description** de la vue formulaire.
+1. 🚫 Si l’utilisateur entre un prix négatif et clique sur **Save**, une erreur s’affiche.
+2. 🚫 Si deux “Property Types” ont le même nom → message d’erreur.
+3. 🚫 Si le vendeur entre un prix de vente inférieur à 90% du prix attendu → validation bloquée.
 
 ---
 
-### Étape 2 : Calculer la meilleure offre (`best_price`)
+## ✅ **Résumé du chapitre**
 
-Toujours dans `estate_property.py` :
-
-```python
-best_price = fields.Float(
-    compute="_compute_best_price",
-    string="Best Offer"
-)
-
-@api.depends("offer_ids.price")
-def _compute_best_price(self):
-    for record in self:
-        if record.offer_ids:
-            record.best_price = max(record.offer_ids.mapped("price"))
-        else:
-            record.best_price = 0.0
-```
-
-👉 Ajouter `best_price` dans la vue formulaire (colonne des prix).
-
----
-
-### Étape 3 : Gérer la validité et la date limite (`estate.property.offer`)
-
-Dans `estate_property_offer.py` :
-
-```python
-from datetime import timedelta
-
-validity = fields.Integer(default=7)
-date_deadline = fields.Date(
-    compute="_compute_date_deadline",
-    inverse="_inverse_date_deadline",
-    store=True
-)
-
-@api.depends("validity", "create_date")
-def _compute_date_deadline(self):
-    for record in self:
-        create_date = record.create_date or fields.Date.today()
-        record.date_deadline = create_date + timedelta(days=record.validity)
-
-def _inverse_date_deadline(self):
-    for record in self:
-        create_date = record.create_date or fields.Date.today()
-        record.validity = (record.date_deadline - create_date).days
-```
-
-👉 Ajouter `validity` et `date_deadline` dans la **vue formulaire et liste des offres**.
-
----
-
-### Étape 4 : Onchange pour `garden`
-
-Toujours dans `estate_property.py` :
-
-```python
-@api.onchange("garden")
-def _onchange_garden(self):
-    if self.garden:
-        self.garden_area = 10
-        self.garden_orientation = "North"
-    else:
-        self.garden_area = 0
-        self.garden_orientation = False
-```
-
-👉 Tester en cochant/décochant le champ dans le formulaire.
-
----
-
-✅ **Objectifs atteints :**
-
-* Champs calculés (`total_area`, `best_price`).
-* Fonction inverse (`date_deadline` ↔ `validity`).
-* Assistance utilisateur avec `onchange` (`garden`).
+| Élément appris       | Description                                                 |
+| -------------------- | ----------------------------------------------------------- |
+| `SQL Constraints`    | Vérifications automatiques en base (rapides, simples)       |
+| `Python Constraints` | Règles complexes via code (ValidationError)                 |
+| `Objectif global`      | Garantir la cohérence et la fiabilité des données           |
+| `Exemple concret`      | Prix > 0, noms uniques, prix de vente ≥ 90% du prix attendu |
 
 

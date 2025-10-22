@@ -1,4 +1,6 @@
-https://www.odoo.com/documentation/19.0/fr/developer/tutorials/server_framework_101/08_compute_onchange.html.
+https://www.odoo.com/documentation/19.0/developer/reference/backend/actions.html
+
+https://www.odoo.com/documentation/19.0/developer/reference/backend/orm.html#reference-exceptions
 
 ---
 
@@ -6,195 +8,272 @@ https://www.odoo.com/documentation/19.0/fr/developer/tutorials/server_framework_
 
 ---
 
+
 ## 🎯 Objectifs du chapitre
 
 À la fin de ce chapitre, l’apprenant doit être capable de :
 
-1. **Créer des champs calculés (computed fields)** qui dépendent d’autres champs et se mettent à jour automatiquement.
+1. **Relier des boutons d’action dans les vues à des méthodes Python** pour exécuter de la logique métier.
+2. **Créer des actions utilisateur** qui modifient l’état d’un enregistrement (par exemple : marquer un bien comme *vendu* ou *annulé*).
+3. **Mettre en œuvre des règles métier** pour empêcher certaines actions invalides (ex : un bien vendu ne peut plus être annulé).
+4. **Automatiser la mise à jour de champs liés** lors d’actions (ex : lorsqu’une offre est acceptée, mettre à jour le prix de vente et le nom de l’acheteur).
 
-   * Exemple : calculer la surface totale (`total_area`) d’un bien immobilier à partir de la surface habitable et de la surface du jardin.
-   * Exemple : calculer la meilleure offre (`best_price`) parmi les offres reçues.
-
-2. **Définir une fonction inverse (inverse function)** afin de rendre certains champs calculés modifiables par l’utilisateur.
-
-   * Exemple : calculer la date limite d’une offre (`date_deadline`) à partir de la durée de validité, mais aussi permettre l’édition inverse.
-
-3. **Mettre en place des `onchange`** pour faciliter la saisie utilisateur dans les formulaires.
-
-   * Exemple : lorsqu’on coche le champ `garden`, initialiser automatiquement une surface de jardin et une orientation par défaut.
-
-👉 L’objectif global est donc de rendre le module **plus intelligent et interactif**, en automatisant des calculs et en assistant l’utilisateur dans la saisie.
+👉 Ce chapitre introduit un concept fondamental d’Odoo : **les actions déclenchées par l’utilisateur** à travers des **boutons**.
 
 ---
 
 ## 🧩 Notions abordées
 
-### 1. **Computed Fields (Champs calculés)**
+### 1. **Les actions utilisateur (Object methods)**
 
-* Un champ calculé n’est **pas stocké directement en base** : sa valeur est **calculée à la volée** par Odoo en fonction d’autres champs.
-* Il est défini avec l’attribut `compute`.
-* On utilise le décorateur `@api.depends` pour indiquer sur quels champs repose le calcul.
-* Par défaut, un champ calculé est **read-only**.
+Dans Odoo, une **action utilisateur** est une méthode Python qui s’exécute lorsqu’un utilisateur clique sur un bouton dans l’interface.
 
 Exemple :
 
-```python
-total_area = fields.Float(compute="_compute_total_area")
-
-@api.depends("living_area", "garden_area")
-def _compute_total_area(self):
-    for record in self:
-        record.total_area = record.living_area + record.garden_area
+```xml
+<button name="action_do_something" type="object" string="Do Something"/>
 ```
+
+* `name` → le nom de la méthode Python à exécuter.
+* `type="object"` → indique à Odoo qu’il s’agit d’un appel de méthode métier.
+* `string` → le texte du bouton affiché dans l’interface.
+
+Méthode associée :
+
+```python
+def action_do_something(self):
+    for record in self:
+        record.name = "Something"
+    return True
+```
+
+🔹 **Règles importantes :**
+
+* Les méthodes appelées par les boutons sont **publiques**, donc **pas de préfixe `_`**.
+* Toujours boucler sur `self`, car l’action peut s’appliquer à plusieurs enregistrements.
+* Toujours retourner une valeur (souvent `True`).
 
 ---
 
-### 2. **Inverse Function (Fonction inverse)**
+### 2. **Gestion des états (State machine)**
 
-* Permet à l’utilisateur de **modifier un champ calculé** depuis l’interface.
-* Odoo met alors à jour automatiquement les champs dépendants via la fonction `inverse`.
-* Utile pour les cas où deux champs dépendent l’un de l’autre (ex. validité ↔ date limite).
+Le champ `state` d’un modèle permet de représenter les **étapes d’un processus métier** (workflow).
 
-Exemple :
+Exemple dans `estate.property` :
 
 ```python
-date_deadline = fields.Date(
-    compute="_compute_date_deadline",
-    inverse="_inverse_date_deadline",
-    store=True
+state = fields.Selection(
+    [
+        ('new', 'New'),
+        ('offer_received', 'Offer Received'),
+        ('offer_accepted', 'Offer Accepted'),
+        ('sold', 'Sold'),
+        ('cancelled', 'Cancelled'),
+    ],
+    string='Status',
+    required=True,
+    copy=False,
+    default='new'
 )
 ```
 
+Les actions que nous allons créer vont simplement **modifier la valeur du champ `state`** :
+
+* `action_sold()` → `state = 'sold'`
+* `action_cancel()` → `state = 'cancelled'`
+
+💡 On parlera alors de **machine à états** : chaque bouton déplace l’enregistrement d’un état à un autre selon certaines règles.
+
 ---
 
-### 3. **Onchange**
+### 3. **Lever des erreurs métier (UserError)**
 
-* Mécanisme qui modifie d’autres champs **dans le formulaire**, sans sauvegarde en base, dès qu’un champ change.
-* Utile pour **aider l’utilisateur à la saisie**.
-* À ne pas utiliser pour de la logique métier, car les `onchange` ne s’exécutent que dans l’interface.
-
-Exemple :
+Pour empêcher des actions invalides, Odoo permet de **lever des erreurs** via la classe `UserError` :
 
 ```python
-@api.onchange("garden")
-def _onchange_garden(self):
-    if self.garden:
-        self.garden_area = 10
-        self.garden_orientation = "North"
-    else:
-        self.garden_area = 0
-        self.garden_orientation = False
+from odoo.exceptions import UserError
+
+if record.state == 'sold':
+    raise UserError("A sold property cannot be cancelled.")
 ```
+
+👉 L’erreur s’affiche à l’écran et bloque l’exécution.
+C’est la manière recommandée d’imposer des **règles de validation métier** côté serveur.
+
+---
+
+### 4. **Actions sur d’autres modèles**
+
+Une action peut aussi impacter un autre modèle.
+Exemple : quand une **offre** est acceptée, cela modifie le bien immobilier associé :
+
+* On définit l’acheteur (`buyer_id`) sur `estate.property`
+* On met à jour le prix de vente (`selling_price`)
+
+C’est ainsi qu’Odoo gère la cohérence des données entre modèles liés.
 
 ---
 
 ## 🛠️ Implémentation (Pratique)
 
-### Étape 1 : Calculer la surface totale (`total_area`)
+### Étape 1️⃣ : Ajouter les boutons dans la vue `estate.property`
 
-Dans `estate_property.py` :
+Dans `estate/views/estate_property_views.xml` :
 
-```python
-from odoo import fapi
+```xml
+<record id="view_estate_property_form" model="ir.ui.view">
+    <field name="name">estate.property.form</field>
+    <field name="model">estate.property</field>
+    <field name="arch" type="xml">
+        <form string="Properties">
+            <header>
+                <button name="action_sold" type="object" string="Sold"
+                        class="btn-primary" invisible="state in ['sold', 'cancelled']"/>
+                <button name="action_cancel" type="object" string="Cancel"
+                        class="btn-secondary" invisible="state in ['sold', 'cancelled']"/>
+                <field name="state" widget="statusbar"/>
+            </header>
 
-total_area = fields.Float(
-    compute="_compute_total_area",
-    string="Total Area (sqm)"
-)
-
-@api.depends("living_area", "garden_area")
-def _compute_total_area(self):
-    for record in self:
-        record.total_area = record.living_area + record.garden_area
+            <sheet>
+                <!-- ton contenu existant -->
+            </sheet>
+        </form>
+    </field>
+</record>
 ```
-
-👉 Ajouter `total_area` dans l’onglet **Description** de la vue formulaire.
 
 ---
 
-### Étape 2 : Calculer la meilleure offre (`best_price`)
-
-Toujours dans `estate_property.py` :
+### Étape 2️⃣ : Ajouter la logique métier dans `estate_property.py`
 
 ```python
-best_price = fields.Float(
-    compute="_compute_best_price",
-    string="Best Offer"
-)
+from odoo import fields, models, api
+from odoo.exceptions import UserError
 
-@api.depends("offer_ids.price")
-def _compute_best_price(self):
-    for record in self:
-        if record.offer_ids:
-            record.best_price = max(record.offer_ids.mapped("price"))
-        else:
-            record.best_price = 0.0
+class EstateProperty(models.Model):
+    _name = "estate.property"
+    _description = "Real Estate Property"
+
+    state = fields.Selection([
+        ('new', 'New'),
+        ('offer_received', 'Offer Received'),
+        ('offer_accepted', 'Offer Accepted'),
+        ('sold', 'Sold'),
+        ('cancelled', 'Cancelled')
+    ], string='Status', required=True, copy=False, default='new')
+
+    def action_sold(self):
+        for record in self:
+            if record.state in ['sold', 'cancelled']:
+                raise UserError("A cancelled property cannot be sold.")
+            record.state = 'sold'
+        return True
+
+    def action_cancel(self):
+        for record in self:
+            if record.state in ['sold', 'cancelled']:
+                raise UserError("A sold property cannot be cancelled.")
+            record.state = 'cancelled'
+        return True
 ```
-
-👉 Ajouter `best_price` dans la vue formulaire (colonne des prix).
 
 ---
 
-### Étape 3 : Gérer la validité et la date limite (`estate.property.offer`)
+### Étape 3️⃣ : Ajouter les boutons dans la vue `estate.property.offer`
+
+Dans `estate/views/estate_property_offer_views.xml` :
+
+```xml
+<record id="view_estate_property_offer_form" model="ir.ui.view">
+    <field name="name">estate.property.offer.form</field>
+    <field name="model">estate.property.offer</field>
+    <field name="arch" type="xml">
+        <form string="Offers">
+            <header>
+                <button name="action_accept" type="object" string="Accept" class="btn-primary"
+                        invisible="status = 'accepted'"/>
+                <button name="action_refuse" type="object" string="Refuse" class="btn-secondary"
+                        invisible="status = 'refused'"/>
+                <field name="status" widget="statusbar"/>
+            </header>
+            <sheet>
+                <group>
+                    <field name="price"/>
+                    <field name="partner_id"/>
+                    <field name="validity"/>
+                    <field name="date_deadline"/>
+                </group>
+            </sheet>
+        </form>
+    </field>
+</record>
+```
+
+---
+
+### Étape 4️⃣ : Logique métier pour accepter ou refuser une offre
 
 Dans `estate_property_offer.py` :
 
 ```python
-from datetime import timedelta
+from odoo import models, fields
+from odoo.exceptions import UserError
 
-validity = fields.Integer(
-    compute="_compute_validity",
-    inverse="_compute_date_deadline",
-    default=7, 
-    store=True
-)
-date_deadline = fields.Date(
-    compute="_compute_date_deadline",
-    inverse="_compute_validity",
-    store=True
-)
+class EstatePropertyOffer(models.Model):
+    _name = "estate.property.offer"
+    _description = "Estate Property Offer"
 
+    status = fields.Selection([
+        ('accepted', 'Accepted'),
+        ('refused', 'Refused')
+    ], copy=False)
 
-@api.depends("validity")
-def _compute_date_deadline(self):
-    for record in self:
-        create_date = (record.create_date.date() if record.create_date else fields.Date.today())
-        record.date_deadline = create_date + timedelta(days=record.validity)
+    def action_accept(self):
+        for record in self:
+            if record.property_id.state in ['sold', 'cancelled']:
+                raise UserError("Cannot accept an offer for a sold or cancelled property.")
+            # Une seule offre acceptée par bien
+            other_offers = record.property_id.offer_ids - record
+            other_offers.write({'status': 'refused'})
+            record.status = 'accepted'
+            record.property_id.selling_price = record.price
+            record.property_id.buyer_id = record.partner_id
+            record.property_id.state = 'offer_accepted'
+        return True
 
-@api.depends("date_deadline")
-def _compute_validity(self):
-    for record in self:
-        create_date = (record.create_date.date() if record.create_date else fields.Date.today())
-        record.validity = (record.date_deadline - create_date).days
+    def action_refuse(self):
+        for record in self:
+            record.status = 'refused'
+        return True
 ```
-
-👉 Ajouter `validity` et `date_deadline` dans la **vue formulaire et liste des offres**.
 
 ---
 
-### Étape 4 : Onchange pour `garden`
+## ✅ Résultat attendu
 
-Toujours dans `estate_property.py` :
+* Les boutons **“Sold”** et **“Cancel”** apparaissent en haut du formulaire du bien immobilier.
 
-```python
-@api.onchange("garden")
-def _onchange_garden(self):
-    if self.garden:
-        self.garden_area = 10
-        self.garden_orientation = "north"
-    else:
-        self.garden_area = 0
-        self.garden_orientation = False
-```
+  * Un bien *annulé* ne peut plus être vendu.
+  * Un bien *vendu* ne peut plus être annulé.
 
-👉 Tester en cochant/décochant le champ dans le formulaire.
+* Dans les offres :
+
+  * Les boutons **“Accept”** et **“Refuse”** sont visibles.
+  * Lorsqu’une offre est acceptée :
+
+    * Le **prix de vente** et le **nom de l’acheteur** sont automatiquement mis à jour sur le bien.
+    * Les autres offres sont automatiquement refusées.
 
 ---
 
-✅ **Objectifs atteints :**
+## 🧠 À retenir
 
-* Champs calculés (`total_area`, `best_price`).
-* Fonction inverse (`date_deadline` ↔ `validity`).
-* Assistance utilisateur avec `onchange` (`garden`).
+| Élément                          | Rôle                                                           |
+| -------------------------------- | -------------------------------------------------------------- |
+| **type="object"**                | Appelle une méthode Python                                     |
+| **Public method**                | Pas de `_` devant le nom                                       |
+| **UserError**                    | Empêche les actions invalides                                  |
+| **State field**                  | Sert à suivre le statut d’un enregistrement                    |
+| **Actions sur d’autres modèles** | Permettent de propager des effets logiques entre entités liées |
 
 

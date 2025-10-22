@@ -1,5 +1,6 @@
-https://www.odoo.com/documentation/19.0/fr/developer/tutorials/server_framework_101/03_basicmodel.html
+https://www.odoo.com/documentation/19.0/developer/reference/backend/orm.html#reference-orm-model
 
+https://www.odoo.com/documentation/19.0/developer/reference/backend/orm.html#fields
 
 # ✅ Checklists – Définir les modèles et leurs champs
 
@@ -25,7 +26,7 @@ Avant de commencer, assure-toi que le module `estate` est bien installé.
 1. Dans ton module `estate`, crée un dossier **models** :
 
    ```
-   /home/$USER/src/tutorials/estate/models/
+   costum_addons/tutorials/estate/models/
    ```
 
 2. Dans ce dossier, crée un fichier `estate_property.py`.
